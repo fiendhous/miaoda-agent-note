@@ -2,7 +2,7 @@
 name: miaoda-app
 description: >
   飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。
-  触发词：妙搭, miaoda, apaas, AGENTS.md, sprint/default, lark-cli, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, cron, 定时任务, 多维表格同步。
+  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, cron, 定时任务, 多维表格同步。
   Use when starting or changing a Feishu Miaoda NestJS and React app.
 ---
 
@@ -34,9 +34,35 @@ description: >
 - 要不要定时任务、飞书卡片、未登录回调、多维表格同步、外部系统。
 - 操作日志用系统自带的 `pg_audit`，还是这个项目不做操作日志。
 - 界面以哪份主题文件为准。
+- 给人看的说明放在 `docs/`，并在这里链到 `docs/README.md`。
 - 明确不做的事。
 
-业务规则、表名、审批链、外部地址只写在这个 `AGENTS.md`，不要写回本 skill。
+业务规则、表名、审批链、外部地址写在这个 `AGENTS.md` 和 `docs/`，不要写回本 skill。
+
+## 给人看的文档
+
+每个妙搭项目都要有仓库根下的 `docs/`。给人读的 Markdown 都放这里，不要只留在对话里，也不要散落在随机目录。
+
+仓库根的 `AGENTS.md` 继续留在根上，供 Agent 开工时读取，并链到 `docs/README.md`。平台如果要求根上有 `README.md`，那份只保留怎么安装和怎么进入应用。功能说明、操作步骤、方案和变更记录放进 `docs/`。
+
+开工时先建：
+
+- `docs/README.md`：目录。每一份文档一行，写它讲什么、算不算现行口径。
+- `docs/使用说明.md`：同事不看代码也能完成的操作。页面、谁能用、做完之后看到什么。
+- `docs/work-log/`：每次改完仓库追加一份记录。
+
+改完代码、修缺陷、改配置、做调研或出方案，都要新增或更新对应文档。文档没写，任务不算做完。只回答问题、没有改仓库时，不必新开记录。
+
+工作记录的文件名用 `YYYY-MM-DD-事项.md`，事项是短中文。正文用完整句子，写清：
+
+- 别人会看到什么变化。
+- 做了什么、改了哪些地方。
+- 怎么验证，结果是什么。
+- 还没定的规则和已知限制。没定的规则写成「未定」，不要写成系统已经会自动做。
+
+同一天的连续小改可以补在当天同一份记录里。换一类事情就新开一份。带日期的旧档案按它自己的日期理解，不要改写成当前线上状态，也不要把本次记录写进旧档案。
+
+不要写连接串、token、密码和人员 id。
 
 ## 本地
 

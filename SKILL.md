@@ -2,7 +2,7 @@
 name: miaoda-app
 description: >
   飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。
-  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, cron, 定时任务, 多维表格同步。
+  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, 页面预览, cron, 定时任务, 多维表格同步。
   Use when starting or changing a Feishu Miaoda NestJS and React app.
 ---
 
@@ -12,13 +12,23 @@ description: >
 
 命令里的 `<app_id>` 用这个应用自己的 id。都加 `--as user`。不要把 lark-cli 自己的应用 id 传给 `apps +*`。
 
-平台共性来自 [miaoda-agent-kit](https://github.com/Lens-lzy/miaoda-agent-kit)（CC BY 4.0，实测于 2026-08 至 2026-09）。本 skill 只保留换一个妙搭项目仍然成立的做法，并补上 2026-10 之后多个项目核实过的发版、定时任务、注释和 `pg_audit`。上游「改完就推」和「DDL 一律放 `scripts/sql/`」不要照搬：发版要等这个项目的 `AGENTS.md` 允许，DDL 放生成器碰不到的目录。
+平台共性来自 [miaoda-agent-kit](https://github.com/Lens-lzy/miaoda-agent-kit)（CC BY 4.0，实测于 2026-08 至 2026-09）。本 skill 只保留换一个妙搭项目仍然成立的做法，并补上 2026-10 之后多个项目核实过的发版、定时任务、注释、`pg_audit` 和页面预览。上游「改完就推」和「DDL 一律放 `scripts/sql/`」不要照搬：发版要等这个项目的 `AGENTS.md` 允许，DDL 放生成器碰不到的目录。
 
 ## 仓库
 
 仓库根是这个应用自己的目录，不是上一级。只在 `sprint/default` 上改、提交和发布。`main` 由发布成功后平台推进，不要在 `main` 上提交、合并、变基或推送，也不要强推。
 
 线上地址是 `https://<租户域名>/app/<app_id>`。
+
+## 查代码
+
+仓库根有 `.codegraph/` 时，查符号、调用链、某段逻辑在哪、改哪里会波及谁，以及动手改之前，先调 CodeGraph MCP 的 `codegraph_explore`。不要先全库 grep，也不要把文件整篇读进来。一次调用带回相关符号的带行号源码、它们之间的调用路径和影响范围。返回的源码按已经读过处理。
+
+这个 MCP 没有默认项目。`projectPath` 传本仓库根目录的绝对路径。工具不在时，在仓库根执行 `codegraph explore "<符号或问题>"`，输出相同。
+
+图里没有，或确认是生成物、配置时，再用搜索和读取。不要自己跑 `codegraph init` 或 `uninit`。改完后索引通常会跟上；对不上再跑 `codegraph sync`。没有 `.codegraph/` 时不要建索引，用仓库里的搜索和读取。
+
+`.codegraph/` 里的数据库、pid 和套接字留在本机。仓库里只留 `.codegraph/.gitignore`。
 
 ## 完善 AGENTS.md
 
@@ -78,7 +88,32 @@ npm run dev:local
 
 要人帮忙看的服务端现象，做成日志再用 `+log-list` 捞。不要做成「请打开这个接口」。
 
-`package.json`、`package-lock.json`、`scripts/` 会被平台同步重写。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
+`package.json`、`package-lock.json`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在单独子目录，见下一节。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
+
+## 页面预览
+
+改列表、筛选、弹层、日历这类界面时，不要靠 `npm run dev:local` 验收。那条会拉飞书登录并挂上 Nest。另开一个只装 `@vitejs/plugin-react` 的 Vite，直接渲染仓库里的真实页面或组件。
+
+目录放 `scripts/<事项>-preview/`，里面有 `index.html`、`main.tsx`、`vite.config.ts`。不要把启动命令写进 `package.json`。
+
+```bash
+npx vite --config scripts/<事项>-preview/vite.config.ts
+```
+
+`root` 设成这个预览目录。`server.host` 用 `127.0.0.1`，`strictPort: true`。端口记在该项目的工作记录里，不要占 `8080`。
+
+配置里：
+
+- `@` 指到 `client/src`。页面还引用 `@shared` 时，一并指到仓库的 `shared`。
+- `@/inspector.dev.css` 指到 `@lark-apaas/fullstack-vite-preset` 里的 `empty.css`。
+- 页面引用的 `@/api`、`@lark-apaas/client-toolkit/logger` 指到预览目录里的 mock。mock 只返回这次要看的数据，不发请求。
+- `css.postcss` 用仓库根的 `postcss.config.js`。`server.fs.allow` 包含仓库根。否则真实页面的 Tailwind 类生成不出来，或读不到预览目录外面的文件。
+
+`main.tsx` 引入真实的 `client/src/index.css` 和真实页面。页面用了 react-router 就包一层 `MemoryRouter`，不要依赖 `/app/<app_id>` 这层壳。手机页把容器收在大约 390 宽，再在浏览器的手机视口里点一遍。
+
+假数据的类型跟真实接口的返回类型一致。先放界面上必须出现的那些行，再补筛选、空态和分支会点到的不同取值。只有一种取值时，筛选项点下去是空的，这页不算看过。不要写人员 id、token、连接串。
+
+这条只说明页面在这份假数据下画得出来、点得动。登录、权限、接口和真库都不算验过。改了数据路径，仍用 `dev:local` 或线上再验。
 
 ## 数据库
 

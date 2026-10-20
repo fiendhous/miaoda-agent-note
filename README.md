@@ -12,7 +12,7 @@
 技能        miaoda-app
 规则        SKILL.md
 业务        各项目自己的 AGENTS.md
-安装位置    <仓库>/.grok/skills/
+安装位置    本机已识别 Agent 各自的 skills 目录
 ```
 
 ## 安装
@@ -20,16 +20,12 @@
 在妙搭仓库根目录执行：
 
 ```bash
-npx skills add fiendhous/miaoda-agent-note -y -a grok
+npx skills add fiendhous/miaoda-agent-note -y
 ```
+
+这条命令按本机已经识别到的 Agent 安装，不绑定某一个。只装其中几个时，加上 `-a <名字>`，多个名字用空格分开。要装进 CLI 支持的全部 Agent，改成 `--agent '*'`。本机一个都识别不到、又没写 `-a` 时，也会装进全部。
 
 已经装过的仓库再执行一次，才会换成当前这份 `SKILL.md`。
-
-团队里还有别的 Agent：
-
-```bash
-npx skills add fiendhous/miaoda-agent-note -y --agent '*'
-```
 
 ## 装完看哪里
 

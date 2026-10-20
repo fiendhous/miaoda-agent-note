@@ -2,7 +2,7 @@
 name: miaoda-app
 description: >
   飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。
-  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, 页面预览, cron, 定时任务, 多维表格同步。
+  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, doctor, 授权, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, 页面预览, cron, 定时任务, 多维表格同步。
   Use when starting or changing a Feishu Miaoda NestJS and React app.
 ---
 
@@ -10,15 +10,70 @@ description: >
 
 新项目只装本 skill。项目自己的业务写在该仓库的 `AGENTS.md`。和本 skill 冲突时，以那个 `AGENTS.md` 为准。脚手架留下的设计指南不算写完，开工时要把 `AGENTS.md` 补成下面这一节要求的样子。
 
-命令里的 `<app_id>` 用这个应用自己的 id。都加 `--as user`。不要把 lark-cli 自己的应用 id 传给 `apps +*`。
+命令怎么写见「本机 lark-cli」。目录名、Git 路径和 lark-cli 自己的应用不是这一个 id，见「认地址」。
 
-平台共性来自 [miaoda-agent-kit](https://github.com/Lens-lzy/miaoda-agent-kit)（CC BY 4.0，实测于 2026-08 至 2026-09）。本 skill 只保留换一个妙搭项目仍然成立的做法，并补上 2026-10 之后多个项目核实过的发版、定时任务、注释、`pg_audit` 和页面预览。上游「改完就推」和「DDL 一律放 `scripts/sql/`」不要照搬：发版要等这个项目的 `AGENTS.md` 允许，DDL 放生成器碰不到的目录。
+平台共性来自 [miaoda-agent-kit](https://github.com/Lens-lzy/miaoda-agent-kit)（CC BY 4.0，实测于 2026-08 至 2026-09）。本 skill 只保留换一个妙搭项目仍然成立的做法，并补上 2026-10 之后多个项目核实过的发版、定时任务、注释、`pg_audit`、页面预览、认地址和本机授权。上游「改完就推」和「DDL 一律放 `scripts/sql/`」不要照搬：发版要等这个项目的 `AGENTS.md` 允许，DDL 放生成器碰不到的目录。
 
 ## 仓库
 
 仓库根是这个应用自己的目录，不是上一级。只在 `sprint/default` 上改、提交和发布。`main` 由发布成功后平台推进，不要在 `main` 上提交、合并、变基或推送，也不要强推。
 
 线上地址是 `https://<租户域名>/app/<app_id>`。
+
+## 认地址
+
+这四个名字经常不一样。命令、日志、数据库和发版只用应用 id。
+
+| 是什么 | 从哪认 | 用来做什么 |
+|---|---|---|
+| 应用 id | `.spark/meta.json` 的 `app_id`，或浏览器地址里的 `/app/app_xxx` | `apps +*`、接口前缀、线上地址 |
+| 线上地址 | 租户域名加 `/app/<app_id>`。发布完成后以 `+release-get` 的 `online_url` 为准 | 给人打开 |
+| Git 仓库 | `git remote get-url origin` | clone、push |
+| 本机目录 | 文件夹名 | 只是本机路径 |
+
+应用 id 以 `app_` 开头。用户只给了名字时，用 `lark-cli apps +list --keyword "<名字>" --as user` 对一下，多个结果先问人。
+
+Git 远端多在 `miaoda-git.feishu.cn`。路径最后一段常见 `code_...`，有的仓库是 `app_...`。这两段都不要直接拿来当应用 id，先和 `.spark/meta.json` 对上。Git 地址也不能当成线上页面打开。
+
+浏览器里的 `/page/<token>` 是创意模式的 meta token，不是这份全栈仓库的应用 id。
+
+推送认证失败时，用这个应用的 id 执行 `lark-cli apps +git-credential-init --app-id <app_id> --as user`，再重试原来的 git 命令。不要改远端地址。
+
+## 本机 lark-cli
+
+操作妙搭用已经登录的用户身份，不为每个项目再造一个自建应用。lark-cli 自己的飞书应用只负责本机登录，一个本机配置一份，id 以 `cli_` 开头。这个 id 不能传给任何 `apps +*`。
+
+开工先查环境：
+
+```bash
+lark-cli doctor
+lark-cli whoami
+lark-cli --version
+```
+
+`doctor` 看配置、登录和连通性。有一项失败就先修这项。`whoami` 里实际生效的身份应是 user。`--as bot` 看不到这个人的应用。
+
+妙搭命令写成 `lark-cli apps +<命令> --as user --app-id <app_id>`。旗标不确定时，先给这条命令加 `--help`。
+
+JSON 成功看 `ok == true` 或退出码 0。成功结果没有顶层 `code`。
+
+本机还没有绑定 CLI 应用时，才跑一次 `lark-cli config init --new`。已经配过就不要再跑，否则会再造一个飞书应用。
+
+未登录，或明确缺少 apps 权限时，才授权一次：
+
+```bash
+lark-cli auth login --domain apps --no-wait --json
+```
+
+已经登录就不要为了保险再登一次。授权链接原样交给用户，等用户说完成后再继续原来的命令。
+
+看有没有新版本用 `lark-cli update --check`。要升级用 `lark-cli update`，它同时更新 CLI 和它管理的 skills。输出里的 `_notice.update` 先做完手头的事，再告诉用户可以升级。只有命令明确说客户端版本过旧时，升级后用原来的参数重试。
+
+`--file`、`--output`、`--path` 只接受当前目录下的相对路径。绝对路径会报 `unsafe file path`。先切到仓库根再执行。
+
+退出码 10 是确认门，不是失败。把操作和参数给人看，同意后再把 `--yes` 加到原命令末尾。不要自己补上。
+
+应用运行时代码不要调用 `lark-cli`。它只在开发时查平台。业务请求走仓库里的 SDK。
 
 ## 查代码
 
@@ -76,11 +131,13 @@ description: >
 
 ## 本地
 
+先看这个仓库的启动脚本。常见模板是：
+
 ```bash
 npm run dev:local
 ```
 
-后端挂在 Vite 里，自己不听端口。页面和接口走 `http://localhost:8080/app/<app_id>/...`。`npm run dev` 不刷新数据库连接串。
+后端挂在 Vite 里，自己不听端口。页面和接口走 `http://localhost:8080/app/<app_id>/...`。有的模板会单独起 Nest，端口以那个脚本为准，不要套另一个仓库的端口。`npm run dev` 不刷新数据库连接串。
 
 调接口同时带 `Cookie: suda-csrf-token=<X>` 和 `X-Suda-Csrf-Token: <X>`。`/api/*` 不能在浏览器地址栏打开。本地登录的人被 `.env.local` 的 `SUDA_WEBUSER` 钉死，改请求头无效。`.env.local` 不进 git。shell 里已经导出的变量优先于 `.env.local`。验别人的视角要换启动时的身份，换请求头无效。这类断言的第一条必须钉住「不是当前这个人」。
 
@@ -88,7 +145,7 @@ npm run dev:local
 
 要人帮忙看的服务端现象，做成日志再用 `+log-list` 捞。不要做成「请打开这个接口」。
 
-`package.json`、`package-lock.json`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在单独子目录，见下一节。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
+`package.json`、`package-lock.json`、`.githooks/`、`.spark_project`、`client/src/api/gen`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在单独子目录，见下一节。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
 
 ## 页面预览
 
@@ -136,13 +193,15 @@ SQL 编辑器一次只跑一张表的注释。整文件一次贴进去会超时�
 先看这个应用有没有拆出 dev：
 
 - 有 dev：结构变更打在 dev。online 禁止 DDL。发布会把库结构一起带上。
-- 只有一套库：`+db-execute` 不传 `--environment`。不要执行 `+db-env-create`，那一步不可逆。
+- 只有一套库：`+db-execute` 不传 `--environment`。不要执行 `+db-env-create`，那一步不可逆。`+env-pull` 若报 `Invalid DB Branch: dev`，就是没拆环境，不要因此去建 dev。
 
 公共连接禁止 `WITH` 和多语句，DDL 自动提交，不能用 `BEGIN … ROLLBACK` 试探，也不能用 `pg_advisory_lock`。应用进程里已经跑通的 drizzle SQL 不受这条限制。人员字段只比较 `(字段).user_id`，没有 `.name`。不要把 JS 的 `Date` 绑进 SQL。UUID 数组写成 `ARRAY[$1::uuid, ...]::uuid[]`。`SELECT` 也要加 `--yes`。结果大约到 1000 行会截断，按人汇总用 `GROUP BY`。
 
+平台的 postgres.js 会把 void 结果当 JSON 解析。`INSERT`、`UPDATE`、`DELETE` 不带 `RETURNING`，或查出 `pg_advisory_xact_lock` 这种 void 列，会抛 `Unexpected end of JSON input`，再变成 500。写语句带 `RETURNING`。要的值用 `json_build_object` 包出来。
+
 SQL 要在真库跑一次，并确认结果不是全 0。全 0 和「条件恒不成立」长得一样。对 SQL 文本做 `toContain` 只锁住字符串，锁不住它能执行。drizzle 拼出来的是表名不是别名，外层再起别名会报 `42P01`。
 
-本地查询脚本有 DML、没有 DDL。`+db-execute --file` 只接受当前目录下的相对路径。
+本地查询脚本有 DML、没有 DDL。`--file` 的路径规则见「本机 lark-cli」。
 
 `schema.ts` 表达不了表达式索引和条件索引，生成时还会丢掉 `WHERE`，读起来像全表唯一，库里却是部分唯一。这两类索引用 SQL 文件维护。索引对账放 `tools/db-index-audit.js`，不要放进平台托管的 `scripts/`。
 
@@ -158,6 +217,7 @@ SQL 要在真库跑一次，并确认结果不是全 0。全 0 和「条件恒�
 - 并存的两条唯一索引口径不同时，新写入会 500。先列出这张表的全部唯一索引。drizzle 把驱动错误包在 `cause` 上。
 - 两个环境的 DDL 直接 `diff` 噪声很大，先把空白和标识符归一化。
 - 服务端 `Promise.all` 不会让 drizzle 查询重叠。耗时约等于次数乘以往返。要快就减少查询次数。
+- 应用角色没有 `BYPASSRLS`。表只开 RLS、策略默认拒绝时，正常读写也会失败。RLS 管不住 `TRUNCATE`。
 
 ## 系统自带的 pg_audit
 
@@ -175,7 +235,11 @@ SQL 编辑器里 `SELECT * FROM pg_audit` 能看到行，应用直查经常是�
 
 妙搭 userId 和飞书 user_id 是两套号，混用不会报错。转换走 `AuthNPaasService`。通讯录批量接口没有部门路径，要沿上级部门找，并设深度上限。
 
+飞书里每人一个浏览器。多人要一起看到的数据写进库。`localStorage` 和 IndexedDB 只留在这台浏览器上。
+
 平台角色留给少数管理身份。店长、伙伴、岗位这一类人写在业务表里，由接口校验。只藏按钮不够，每个写接口都要验。可见范围先保持仅创建者，等人给出名单再放开。
+
+谁能打开应用用 `+access-scope`。谁能改这个应用的代码用 `+member`。应用里的业务角色用 `+role`。这三组和业务表里的人不是一回事，不要互相代替。
 
 ## 发版
 
@@ -193,6 +257,8 @@ lark-cli apps +release-get --as user --app-id <app_id> --release-id <id>
 ```bash
 git merge-base --is-ancestor <这次提交> <commit_id>
 ```
+
+`+release-get` 还没到 `finished` 或 `failed`，节点是 `PENDING` 时，停下来告诉用户在等审批。当前用户不一定是审批人。不要一直查。
 
 已有发布在进行时再创建，会返回 `400002553`。`--jq` 是参数，不能把查询表达式放在命令末尾。接口 403 不能用来判断这版代码在不在，CSRF 在进路由之前就会拒绝。
 
@@ -249,9 +315,9 @@ lark-cli apps +automation-disable --as user --app-id <app_id> --name '<完整名
 
 ## 文件和页面
 
-图片放这个应用自己的文件存储，用 `lark-cli apps +file-upload` 的地址。别的应用的链接不能拿来用，也不要把 base64 写进业务表。页面挂在 `/app/<app_id>` 下，相对路径会请求错位置。`window.location.pathname` 含这个前缀，`useLocation().pathname` 不含。不受前缀影响时用 HashRouter。
+页面上的固定图放这个应用自己的文件存储，用 `lark-cli apps +file-upload` 的地址。别的应用的链接不能拿来用。用户上传的附件只存 `bucketId` 和 `filePath`，打开时按当前登录态 `createSignedUrl`。不要把 `download_url`、`blob:` 或 base64 写进业务表。签名链接谁拿到谁就能打开，权限要在发链接之前验。页面挂在 `/app/<app_id>` 下，相对路径会请求错位置。`window.location.pathname` 含这个前缀，`useLocation().pathname` 不含。不受前缀影响时用 HashRouter。
 
-输入框用 `text-base md:text-sm`。低于 16px 时，iOS 聚焦会放大整页。高度用 `dvh`。可点区域大约不小于 40×40。宽屏改完要在窄屏再走一遍：放得下、主操作还在第一屏。桌面后台可以不逐页改成手机布局，但不能把页面撑出横向滚动。视觉以这个项目的 `tailwind-theme.css` 为准。任意值类名改完后，在构建出的 CSS 里确认这个类生成了。
+输入框用 `text-base md:text-sm`。低于 16px 时，iOS 聚焦会放大整页。高度用 `dvh`。可点区域大约不小于 40×40。宽屏改完要在窄屏再走一遍：放得下、主操作还在第一屏。桌面后台可以不逐页改成手机布局，但不能把页面撑出横向滚动。视觉以这个项目的 `tailwind-theme.css` 为准。任意值类名，以及用字符串拼出来的类名，改完后在构建出的 CSS 里确认这个类生成了。扫描不到的类不会报错。
 
 `ui/Image` 会给本地图铺一层灰底，透明 SVG 会出现一块矩形。透明图内联成组件。模板若关掉了 `strictNullChecks`，`T | undefined` 的错误 tsc 不会报。`process.env` 只在客户端入口替换，单测在 Node 里是绿的，浏览器里没有 `process`。
 

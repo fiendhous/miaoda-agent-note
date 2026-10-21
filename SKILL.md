@@ -147,6 +147,14 @@ npm run dev:local
 
 `package.json`、`package-lock.json`、`.githooks/`、`.spark_project`、`client/src/api/gen`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在单独子目录，见下一节。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
 
+## 首屏体积
+
+路由用 `React.lazy` 加 `Suspense`，管理端页面不要全部静态 import。Vite 的 `manualChunks` 把 react、antd、平台工具包拆成独立 vendor，发版时只失效业务包。
+
+echarts 从 `echarts/core` 按需注册，xlsx 在导出函数里 `await import`。列表里不要逐行挂 `<video>`，点开再 `createSignedUrl`，否则一屏几十个签名请求。
+
+先量再改：主 chunk 超过 1.5MB（gzip）时，看它混进了哪些页面和库。
+
 ## 页面预览
 
 改列表、筛选、弹层、日历这类界面时，不要靠 `npm run dev:local` 验收。那条会拉飞书登录并挂上 Nest。另开一个只装 `@vitejs/plugin-react` 的 Vite，直接渲染仓库里的真实页面或组件。
@@ -229,6 +237,8 @@ SQL 编辑器里 `SELECT * FROM pg_audit` 能看到行，应用直查经常是�
 
 这个项目不做操作日志时，不要建函数，也不要在页面上留入口。把「不做」写进 `AGENTS.md`。
 
+操作日志页的枚举要自己维护。`query_audit_logs` 返回英文表名和字段名，新增表或字段时一起补映射；查不到时回退原始值，不要留空白。`status` 这类值必须按表区分：订单的 `pending` 是待发货，报修明细的是待派单。用一份表清单的源码断言守住，漏一张表就挂测试。
+
 平台 RBAC 授予容易、撤销难，不要把它当唯一安全边界。每个写接口自己校验。
 
 ## 身份
@@ -264,11 +274,19 @@ git merge-base --is-ancestor <这次提交> <commit_id>
 
 推送被拒就 `git pull --rebase origin sprint/default`，然后重跑检查。不要 `--force`。用户没有明确要求时，不要自行提交、推送或发版。
 
+### 平台自动升级
+
+平台会自己在 `sprint/default` 上提交 `chore(upgrade): auto-upgrade by fullstack-cli`，同步模板文件、清理 `package.json`、升级 `@lark-apaas` 依赖，不通知。
+
+推送前先 `git fetch`，看 `git log HEAD..origin/sprint/default`。有升级提交就 rebase。升级改过 `package.json` 时，本地 `node_modules` 可能还是旧版本：`package.json` 写 `^1.0.41`，装着的是 `1.0.40`。这时本地 build 和测试全绿，CI 按 lock 装新版本，差异要到线上才暴露。
+
+rebase 后先 `npm ls <包名>` 对一下；不一致就 `npm ci`。`npm install` 有时在 `node_modules/@esbuild/<平台>` 上报 `ENOTEMPTY`，删掉这个目录再装。不要为此改 lock，也不要把升级的版本手改回去。确实不兼容时，显式钉版本并写原因。
+
 这个应用有正在跑的定时任务时，发版前停用，`finished` 后再打开。停用返回里经常没有状态，用 list 确认。
 
 `npm run build` 会先跑交互式插件初始化，非交互终端里失败不代表代码没编过。分别用 `npm run build:server` 和 `npm run build:client`。`npm run lint` 看退出码，不要用 `tail` 判断。没有 `npm run ts:server` 时，用 `type:check:server` 和 `type:check:client`。检查命令不要加 `--silent`，它会把「脚本不存在」吞掉，退出码仍是 0。管道里的 `$?` 是最后一条命令的状态，要用 `set -o pipefail`。
 
-`package-lock.json` 冲突不要手合，删掉后 `npm install --package-lock-only` 再 `npm ci --dry-run`。rebase 时 `--ours` 和 merge 时的 `--ours` 是反的。fullstack-cli 会把 SQL 文件从 `100644` 改成 `100755`，这种改动先看是不是只有文件模式变了。自动升级只在干净且已经 pull 过的工作区上跑。
+`package-lock.json` 冲突不要手合，删掉后 `npm install --package-lock-only` 再 `npm ci --dry-run`。rebase 时 `--ours` 和 merge 时的 `--ours` 是反的。fullstack-cli 会把 SQL 文件从 `100644` 改成 `100755`，这种改动先看是不是只有文件模式变了。
 
 发布会把库结构一起带上。发布后再跑 `+db-env-migrate` 得到没有待迁差异，是正常的，不要为此再发一次结构。
 
@@ -317,7 +335,11 @@ lark-cli apps +automation-disable --as user --app-id <app_id> --name '<完整名
 
 页面上的固定图放这个应用自己的文件存储，用 `lark-cli apps +file-upload` 的地址。别的应用的链接不能拿来用。用户上传的附件只存 `bucketId` 和 `filePath`，打开时按当前登录态 `createSignedUrl`。不要把 `download_url`、`blob:` 或 base64 写进业务表。签名链接谁拿到谁就能打开，权限要在发链接之前验。页面挂在 `/app/<app_id>` 下，相对路径会请求错位置。`window.location.pathname` 含这个前缀，`useLocation().pathname` 不含。不受前缀影响时用 HashRouter。
 
-输入框用 `text-base md:text-sm`。低于 16px 时，iOS 聚焦会放大整页。高度用 `dvh`。可点区域大约不小于 40×40。宽屏改完要在窄屏再走一遍：放得下、主操作还在第一屏。桌面后台可以不逐页改成手机布局，但不能把页面撑出横向滚动。视觉以这个项目的 `tailwind-theme.css` 为准。任意值类名，以及用字符串拼出来的类名，改完后在构建出的 CSS 里确认这个类生成了。扫描不到的类不会报错。
+输入框用 `text-base md:text-sm`。低于 16px 时，iOS 聚焦会放大整页。高度用 `dvh`。可点区域大约不小于 40×40。
+
+固定底栏在软键盘弹起时会浮在键盘上方，盖住正在编辑的输入框。用 `visualViewport` 的高度变化判断键盘，弹起时收起底栏；不要用 `:has(:focus)`，WebView 里支持不一致。底栏补 `env(safe-area-inset-bottom)`。
+
+宽屏改完要在窄屏再走一遍：放得下、主操作还在第一屏。桌面后台可以不逐页改成手机布局，但不能把页面撑出横向滚动。视觉以这个项目的 `tailwind-theme.css` 为准。任意值类名，以及用字符串拼出来的类名，改完后在构建出的 CSS 里确认这个类生成了。扫描不到的类不会报错。
 
 `ui/Image` 会给本地图铺一层灰底，透明 SVG 会出现一块矩形。透明图内联成组件。模板若关掉了 `strictNullChecks`，`T | undefined` 的错误 tsc 不会报。`process.env` 只在客户端入口替换，单测在 Node 里是绿的，浏览器里没有 `process`。
 

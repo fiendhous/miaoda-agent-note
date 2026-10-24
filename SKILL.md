@@ -1,8 +1,8 @@
 ---
 name: miaoda-app
 description: >
-  飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。
-  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, doctor, 授权, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, 页面预览, cron, 定时任务, 多维表格同步。
+  飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、界面、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。
+  触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, doctor, 授权, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, 页面预览, 界面, cron, 定时任务, 多维表格同步。
   Use when starting or changing a Feishu Miaoda NestJS and React app.
 ---
 
@@ -98,7 +98,7 @@ lark-cli auth login --domain apps --no-wait --json
 - 谁能看、谁能改。平台角色和业务表里的人分别是什么。
 - 要不要定时任务、飞书卡片、未登录回调、多维表格同步、外部系统。
 - 操作日志用系统自带的 `pg_audit`，还是这个项目不做操作日志。
-- 界面以哪份主题文件为准。
+- 界面以哪份主题文件为准。开头写明少写辅助标签和说明，让布局把信息说清楚，见「文件和页面」。
 - 给人看的说明放在 `docs/`，并在这里链到 `docs/README.md`。
 - 明确不做的事。
 
@@ -334,6 +334,8 @@ lark-cli apps +automation-disable --as user --app-id <app_id> --name '<完整名
 ## 文件和页面
 
 页面上的固定图放这个应用自己的文件存储，用 `lark-cli apps +file-upload` 的地址。别的应用的链接不能拿来用。用户上传的附件只存 `bucketId` 和 `filePath`，打开时按当前登录态 `createSignedUrl`。不要把 `download_url`、`blob:` 或 base64 写进业务表。签名链接谁拿到谁就能打开，权限要在发链接之前验。页面挂在 `/app/<app_id>` 下，相对路径会请求错位置。`window.location.pathname` 含这个前缀，`useLocation().pathname` 不含。不受前缀影响时用 HashRouter。
+
+做界面时少写辅助标签和说明。字段名、按钮、空状态已经说清的，不要再配一句「这里是什么」或操作说明。靠位置、层级和留白把结构说清楚。Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
 
 输入框用 `text-base md:text-sm`。低于 16px 时，iOS 聚焦会放大整页。高度用 `dvh`。可点区域大约不小于 40×40。
 

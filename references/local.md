@@ -12,4 +12,4 @@
 
 要人帮忙看的服务端现象，做成日志再用 `+log-list` 捞。不要做成「请打开这个接口」。
 
-`package.json`、`package-lock.json`、`.githooks/`、`.spark_project`、`client/src/api/gen`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在单独子目录，见 `references/pages.md`。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
+`package.json`、`package-lock.json`、`.githooks/`、`.spark_project`、`client/src/api/gen`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在 `scripts/<事项>-preview/`。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。

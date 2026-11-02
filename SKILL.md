@@ -71,7 +71,7 @@ lark-cli auth login --domain apps --no-wait --json
 
 `--file`、`--output`、`--path` 只接受当前目录下的相对路径。绝对路径会报 `unsafe file path`。先切到仓库根再执行。
 
-退出码 10 是确认门，不是失败。把操作和参数给人看，同意后再把 `--yes` 加到原命令末尾。不要自己补上。
+退出码 10 是确认门，不是失败。`+db-execute`（含 `SELECT`）和 `+automation-update` 的帮助里写了 `--yes`，拟好的命令里就带上，先给人看，同意后再执行。其他命令跑出 10 时，同样先给人看操作和参数，同意后再加到原命令末尾。人还没看过时不要自己补上。
 
 应用运行时代码不要调用 `lark-cli`。它只在开发时查平台。业务请求走仓库里的 SDK。
 
@@ -131,13 +131,11 @@ lark-cli auth login --domain apps --no-wait --json
 
 ## 本地
 
-先看这个仓库的启动脚本。常见模板是：
+先看这个仓库 `package.json` 里的 `dev` 脚本，按有的名字启动。没有 `dev:local` 就不要跑 `npm run dev:local`，那会报 `Missing script`。
 
-```bash
-npm run dev:local
-```
+当前常见的 `npm run dev` 在本机没有沙箱环境变量时，会转到 `scripts/dev-local.js`，启动前加载 `.env.local`。沙箱里同一条命令走另一条路径。有的仓库把本地入口单独写成 `npm run dev:local`。有的模板单独起 Nest，端口以那个脚本为准，不要套另一个仓库的端口。
 
-后端挂在 Vite 里，自己不听端口。页面和接口走 `http://localhost:8080/app/<app_id>/...`。有的模板会单独起 Nest，端口以那个脚本为准，不要套另一个仓库的端口。`npm run dev` 不刷新数据库连接串。
+后端挂在 Vite 里时自己不听端口。页面和接口常见在 `http://localhost:8080/app/<app_id>/...`。
 
 调接口同时带 `Cookie: suda-csrf-token=<X>` 和 `X-Suda-Csrf-Token: <X>`。`/api/*` 不能在浏览器地址栏打开。本地登录的人被 `.env.local` 的 `SUDA_WEBUSER` 钉死，改请求头无效。`.env.local` 不进 git。shell 里已经导出的变量优先于 `.env.local`。验别人的视角要换启动时的身份，换请求头无效。这类断言的第一条必须钉住「不是当前这个人」。
 
@@ -157,7 +155,7 @@ echarts 从 `echarts/core` 按需注册，xlsx 在导出函数里 `await import`
 
 ## 页面预览
 
-改列表、筛选、弹层、日历这类界面时，不要靠 `npm run dev:local` 验收。那条会拉飞书登录并挂上 Nest。另开一个只装 `@vitejs/plugin-react` 的 Vite，直接渲染仓库里的真实页面或组件。
+改列表、筛选、弹层、日历这类界面时，不要靠本地 dev 服务验收。那条会拉飞书登录并挂上 Nest。另开一个只装 `@vitejs/plugin-react` 的 Vite，直接渲染仓库里的真实页面或组件。
 
 目录放 `scripts/<事项>-preview/`，里面有 `index.html`、`main.tsx`、`vite.config.ts`。不要把启动命令写进 `package.json`。
 
@@ -178,13 +176,13 @@ npx vite --config scripts/<事项>-preview/vite.config.ts
 
 假数据的类型跟真实接口的返回类型一致。先放界面上必须出现的那些行，再补筛选、空态和分支会点到的不同取值。只有一种取值时，筛选项点下去是空的，这页不算看过。不要写人员 id、token、连接串。
 
-这条只说明页面在这份假数据下画得出来、点得动。登录、权限、接口和真库都不算验过。改了数据路径，仍用 `dev:local` 或线上再验。
+这条只说明页面在这份假数据下画得出来、点得动。登录、权限、接口和真库都不算验过。改了数据路径，仍用这个仓库的 dev 脚本或线上再验。
 
 ## 数据库
 
 `server/database/schema.ts` 由 `npm run gen:db-schema` 生成。手改会在下次生成时消失，也写不出条件索引和表达式索引。真实 DDL 放生成器碰不到的 SQL 文件里。
 
-每张业务表、每一个字段都要有中文注释，含 `_created_at`、`_created_by`、`_updated_at`、`_updated_by`。用 PostgreSQL 的 `COMMENT ON TABLE` 和 `COMMENT ON COLUMN`，和本次 DDL 一起执行。不要用 MySQL 那种写在列定义里的 `COMMENT`。注释写业务含义，不要只重复英文表名或字段名。
+每张业务表、每一个字段都要有中文注释，含 `_created_at`、`_created_by`、`_updated_at`、`_updated_by`。这四个系统字段可以一次批量补，不必逐表重写。用 PostgreSQL 的 `COMMENT ON TABLE` 和 `COMMENT ON COLUMN`，和本次 DDL 一起执行。不要用 MySQL 那种写在列定义里的 `COMMENT`。注释写业务含义，不要只重复英文表名或字段名。
 
 ```sql
 COMMENT ON TABLE example_order IS '订单，一门店一个营业日一行';
@@ -200,10 +198,10 @@ SQL 编辑器一次只跑一张表的注释。整文件一次贴进去会超时�
 
 先看这个应用有没有拆出 dev：
 
-- 有 dev：结构变更打在 dev。online 禁止 DDL。发布会把库结构一起带上。
-- 只有一套库：`+db-execute` 不传 `--environment`。不要执行 `+db-env-create`，那一步不可逆。`+env-pull` 若报 `Invalid DB Branch: dev`，就是没拆环境，不要因此去建 dev。
+- 拆了 dev：DDL 打在 dev，不要打 online。发布会把库结构一起带上。
+- 只有一套库：DDL 打在这套库上。`--environment` 可以传 `online`，也可以不传；不传时单库落到 online，多环境落到 dev。不要传 `dev`，也不要执行 `+db-env-create`，那一步不可逆。`+env-pull` 若报 `Invalid DB Branch: dev`，就是没拆环境，不要因此去建 dev。
 
-公共连接禁止 `WITH` 和多语句，DDL 自动提交，不能用 `BEGIN … ROLLBACK` 试探，也不能用 `pg_advisory_lock`。应用进程里已经跑通的 drizzle SQL 不受这条限制。人员字段只比较 `(字段).user_id`，没有 `.name`。不要把 JS 的 `Date` 绑进 SQL。UUID 数组写成 `ARRAY[$1::uuid, ...]::uuid[]`。`SELECT` 也要加 `--yes`。结果大约到 1000 行会截断，按人汇总用 `GROUP BY`。
+公共连接禁止 `WITH` 和多语句，DDL 自动提交，不能用 `BEGIN … ROLLBACK` 试探，也不能用 `pg_advisory_lock`。应用进程里已经跑通的 drizzle SQL 不受这条限制。人员字段只比较 `(字段).user_id`，没有 `.name`。不要把 JS 的 `Date` 绑进 SQL。UUID 数组写成 `ARRAY[$1::uuid, ...]::uuid[]`。`SELECT` 也要 `--yes`，见「本机 lark-cli」。结果大约到 1000 行会截断，按人汇总用 `GROUP BY`。
 
 平台的 postgres.js 会把 void 结果当 JSON 解析。`INSERT`、`UPDATE`、`DELETE` 不带 `RETURNING`，或查出 `pg_advisory_xact_lock` 这种 void 列，会抛 `Unexpected end of JSON input`，再变成 500。写语句带 `RETURNING`。要的值用 `json_build_object` 包出来。
 
@@ -284,7 +282,7 @@ rebase 后先 `npm ls <包名>` 对一下；不一致就 `npm ci`。`npm install
 
 这个应用有正在跑的定时任务时，发版前停用，`finished` 后再打开。停用返回里经常没有状态，用 list 确认。
 
-`npm run build` 会先跑交互式插件初始化，非交互终端里失败不代表代码没编过。分别用 `npm run build:server` 和 `npm run build:client`。`npm run lint` 看退出码，不要用 `tail` 判断。没有 `npm run ts:server` 时，用 `type:check:server` 和 `type:check:client`。检查命令不要加 `--silent`，它会把「脚本不存在」吞掉，退出码仍是 0。管道里的 `$?` 是最后一条命令的状态，要用 `set -o pipefail`。
+`npm run build` 会先跑交互式插件初始化，非交互终端里失败不代表代码没编过。分别用 `npm run build:server` 和 `npm run build:client`。`npm run lint` 看退出码，不要用 `tail` 判断。输出里是 `write EPIPE` 时，退出码不能当成代码违规，改跑 `npx eslint <文件>` 分清是管道断了还是代码有问题。没有 `npm run ts:server` 时，用 `type:check:server` 和 `type:check:client`。检查命令不要加 `--silent`，它会把「脚本不存在」吞掉，退出码仍是 0。管道里的 `$?` 是最后一条命令的状态，要用 `set -o pipefail`。
 
 `package-lock.json` 冲突不要手合，删掉后 `npm install --package-lock-only` 再 `npm ci --dry-run`。rebase 时 `--ours` 和 merge 时的 `--ours` 是反的。fullstack-cli 会把 SQL 文件从 `100644` 改成 `100755`，这种改动先看是不是只有文件模式变了。
 
@@ -294,12 +292,18 @@ rebase 后先 `npm ls <包名>` 对一下；不一致就 `npm ci`。`npm install
 
 最短间隔 30 分钟。`*/5` 和 `0,15,30,45` 会被拒绝。半小时写成 `0,30 * * * *`。触发器名字里带 `*/` 时，启用接口会 404。名字必须和代码里的键整串一致。
 
+创建 cron 必须带 `--trigger-type cron`。只给 `--cron` 会报 `required flag(s) "trigger-type" not set`。没有 `--type` 这个参数。新建默认是停用的，要再启用。
+
 ```bash
+lark-cli apps +automation-create --as user --app-id <app_id> \
+  --name '<完整名字>' --trigger-type cron --cron '0,30 * * * *' \
+  --description '<不超过 50 字>'
+lark-cli apps +automation-enable --as user --app-id <app_id> --name '<完整名字>'
 lark-cli apps +automation-list --as user --app-id <app_id>
 lark-cli apps +automation-disable --as user --app-id <app_id> --name '<完整名字>'
 ```
 
-`can_delete` 为 false 的旧任务删不掉，保持停用。块注释、网段、路径和正则里都不能出现 `*` 紧挨 `/`，报错会飘到几十行外。`+automation-update` 要加 `--yes`，说明最长 50 个字符。界面上不要承诺精确到分钟。
+`can_delete` 为 false 的旧任务删不掉，保持停用。块注释、网段、路径和正则里都不能出现 `*` 紧挨 `/`，报错会飘到几十行外。`+automation-update` 的 `--yes` 见「本机 lark-cli」。说明最长 50 个字符。界面上不要承诺精确到分钟。
 
 抢占必须写在发消息、发通知和一切副作用之前，条件里带上当前状态，并用受影响行数判断。0 行就返回。排在发送之后的占位只防状态改两次，防不了发两次。没抢到不要记成发送失败。
 

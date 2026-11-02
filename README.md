@@ -29,8 +29,6 @@ npx skills add fiendhous/miaoda-agent-note -y
 
 ## 装完看哪里
 
-新项目只装本技能。上游 [miaoda-agent-kit](https://github.com/Lens-lzy/miaoda-agent-kit)（CC BY 4.0）里换一个妙搭项目仍然成立的做法，已经吸收进 `SKILL.md`。
-
 脚手架只留下设计指南时，先按 `SKILL.md` 把该仓库的 `AGENTS.md` 补全。项目 `AGENTS.md` 与本技能不一致时，以项目 `AGENTS.md` 为准。
 
 本仓库公开。连接串、token、人员 id 不要写进来。命令里的应用 id 写成 `<app_id>`。

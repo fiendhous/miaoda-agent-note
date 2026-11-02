@@ -1,7 +1,7 @@
 ---
 name: miaoda-app
 description: >
-  飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、界面、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。
+  飞书妙搭全栈应用的开工步骤。新建妙搭项目，或要改数据库、界面、本地启动、发版、定时任务、日志、飞书接入、文件存储、外部系统时使用。先读本文件，做到哪一步再读 references/ 里对应的那一节。
   触发词：妙搭, miaoda, apaas, AGENTS.md, docs, sprint/default, lark-cli, doctor, 授权, 发版, db-execute, schema.ts, COMMENT, pg_audit, dev:local, 页面预览, 界面, cron, 定时任务, 多维表格同步。
   Use when starting or changing a Feishu Miaoda NestJS and React app.
 ---
@@ -13,6 +13,20 @@ description: >
 命令怎么写见「本机 lark-cli」。目录名、Git 路径和 lark-cli 自己的应用不是这一个 id，见「认地址」。
 
 平台共性来自 [miaoda-agent-kit](https://github.com/Lens-lzy/miaoda-agent-kit)（CC BY 4.0，实测于 2026-08 至 2026-09）。本 skill 只保留换一个妙搭项目仍然成立的做法，并补上 2026-10 之后多个项目核实过的发版、定时任务、注释、`pg_audit`、页面预览、认地址和本机授权。上游「改完就推」和「DDL 一律放 `scripts/sql/`」不要照搬：发版要等这个项目的 `AGENTS.md` 允许，DDL 放生成器碰不到的目录。
+
+## 做到哪一步读哪一节
+
+本文件只留开工时每次都要守的规则。下面的文件做到那一步再读，读完再改。同一条规则只写在一处。
+
+| 在做 | 先读 |
+|---|---|
+| 本机把应用跑起来 | `references/local.md` |
+| 给人看的文档、工作记录 | `references/docs.md` |
+| 数据库、DDL、`schema.ts`、`pg_audit` | `references/database.md` |
+| 发版、构建、线上日志 | `references/release.md` |
+| 定时任务 | `references/automation.md` |
+| 飞书、身份、外部系统 | `references/feishu.md` |
+| 页面、预览、文件、首屏体积 | `references/pages.md` |
 
 ## 仓库
 
@@ -98,260 +112,11 @@ lark-cli auth login --domain apps --no-wait --json
 - 谁能看、谁能改。平台角色和业务表里的人分别是什么。
 - 要不要定时任务、飞书卡片、未登录回调、多维表格同步、外部系统。
 - 操作日志用系统自带的 `pg_audit`，还是这个项目不做操作日志。
-- 界面以哪份主题文件为准。开头写明少写辅助标签和说明，让布局把信息说清楚，见「文件和页面」。
+- 界面以哪份主题文件为准。开头写明少写辅助标签和说明，让布局把信息说清楚，见 `references/pages.md`。
 - 给人看的说明放在 `docs/`，并在这里链到 `docs/README.md`。
 - 明确不做的事。
 
 业务规则、表名、审批链、外部地址写在这个 `AGENTS.md` 和 `docs/`，不要写回本 skill。
-
-## 给人看的文档
-
-每个妙搭项目都要有仓库根下的 `docs/`。给人读的 Markdown 都放这里，不要只留在对话里，也不要散落在随机目录。
-
-仓库根的 `AGENTS.md` 继续留在根上，供 Agent 开工时读取，并链到 `docs/README.md`。平台如果要求根上有 `README.md`，那份只保留怎么安装和怎么进入应用。功能说明、操作步骤、方案和变更记录放进 `docs/`。
-
-开工时先建：
-
-- `docs/README.md`：目录。每一份文档一行，写它讲什么、算不算现行口径。
-- `docs/使用说明.md`：同事不看代码也能完成的操作。页面、谁能用、做完之后看到什么。
-- `docs/work-log/`：每次改完仓库追加一份记录。
-
-改完代码、修缺陷、改配置、做调研或出方案，都要新增或更新对应文档。文档没写，任务不算做完。只回答问题、没有改仓库时，不必新开记录。
-
-工作记录的文件名用 `YYYY-MM-DD-事项.md`，事项是短中文。正文用完整句子，写清：
-
-- 别人会看到什么变化。
-- 做了什么、改了哪些地方。
-- 怎么验证，结果是什么。
-- 还没定的规则和已知限制。没定的规则写成「未定」，不要写成系统已经会自动做。
-
-同一天的连续小改可以补在当天同一份记录里。换一类事情就新开一份。带日期的旧档案按它自己的日期理解，不要改写成当前线上状态，也不要把本次记录写进旧档案。
-
-不要写连接串、token、密码和人员 id。
-
-## 本地
-
-先看这个仓库 `package.json` 里的 `dev` 脚本，按有的名字启动。没有 `dev:local` 就不要跑 `npm run dev:local`，那会报 `Missing script`。
-
-当前常见的 `npm run dev` 在本机没有沙箱环境变量时，会转到 `scripts/dev-local.js`，启动前加载 `.env.local`。沙箱里同一条命令走另一条路径。有的仓库把本地入口单独写成 `npm run dev:local`。有的模板单独起 Nest，端口以那个脚本为准，不要套另一个仓库的端口。
-
-后端挂在 Vite 里时自己不听端口。页面和接口常见在 `http://localhost:8080/app/<app_id>/...`。
-
-调接口同时带 `Cookie: suda-csrf-token=<X>` 和 `X-Suda-Csrf-Token: <X>`。`/api/*` 不能在浏览器地址栏打开。本地登录的人被 `.env.local` 的 `SUDA_WEBUSER` 钉死，改请求头无效。`.env.local` 不进 git。shell 里已经导出的变量优先于 `.env.local`。验别人的视角要换启动时的身份，换请求头无效。这类断言的第一条必须钉住「不是当前这个人」。
-
-起服务前先停掉旧的 dev server。端口要逐个查，`lsof -ti :3000 :8080` 是非法参数，失败后不能当成端口已空。起来之后先在日志里搜 `already in use`，再打接口。陈旧进程会让请求打到旧代码上。
-
-要人帮忙看的服务端现象，做成日志再用 `+log-list` 捞。不要做成「请打开这个接口」。
-
-`package.json`、`package-lock.json`、`.githooks/`、`.spark_project`、`client/src/api/gen`，以及 `scripts/` 里文件头写着由 sync 维护的启动、构建、lint 脚本，会被平台同步重写。不要手改这些文件，也不要往 `package.json` 加脚本。自己的页面预览放在单独子目录，见下一节。依赖用静态 `import`。部署时按静态 import 裁剪 `node_modules`，运行时 `require()` 的包不会带上。`process.env` 只在客户端入口那一处会被替换。
-
-## 首屏体积
-
-路由用 `React.lazy` 加 `Suspense`，管理端页面不要全部静态 import。Vite 的 `manualChunks` 把 react、antd、平台工具包拆成独立 vendor，发版时只失效业务包。
-
-echarts 从 `echarts/core` 按需注册，xlsx 在导出函数里 `await import`。列表里不要逐行挂 `<video>`，点开再 `createSignedUrl`，否则一屏几十个签名请求。
-
-先量再改：主 chunk 超过 1.5MB（gzip）时，看它混进了哪些页面和库。
-
-## 页面预览
-
-改列表、筛选、弹层、日历这类界面时，不要靠本地 dev 服务验收。那条会拉飞书登录并挂上 Nest。另开一个只装 `@vitejs/plugin-react` 的 Vite，直接渲染仓库里的真实页面或组件。
-
-目录放 `scripts/<事项>-preview/`，里面有 `index.html`、`main.tsx`、`vite.config.ts`。不要把启动命令写进 `package.json`。
-
-```bash
-npx vite --config scripts/<事项>-preview/vite.config.ts
-```
-
-`root` 设成这个预览目录。`server.host` 用 `127.0.0.1`，`strictPort: true`。端口记在该项目的工作记录里，不要占 `8080`。
-
-配置里：
-
-- `@` 指到 `client/src`。页面还引用 `@shared` 时，一并指到仓库的 `shared`。
-- `@/inspector.dev.css` 指到 `@lark-apaas/fullstack-vite-preset` 里的 `empty.css`。
-- 页面引用的 `@/api`、`@lark-apaas/client-toolkit/logger` 指到预览目录里的 mock。mock 只返回这次要看的数据，不发请求。
-- `css.postcss` 用仓库根的 `postcss.config.js`。`server.fs.allow` 包含仓库根。否则真实页面的 Tailwind 类生成不出来，或读不到预览目录外面的文件。
-
-`main.tsx` 引入真实的 `client/src/index.css` 和真实页面。页面用了 react-router 就包一层 `MemoryRouter`，不要依赖 `/app/<app_id>` 这层壳。手机页把容器收在大约 390 宽，再在浏览器的手机视口里点一遍。
-
-假数据的类型跟真实接口的返回类型一致。先放界面上必须出现的那些行，再补筛选、空态和分支会点到的不同取值。只有一种取值时，筛选项点下去是空的，这页不算看过。不要写人员 id、token、连接串。
-
-这条只说明页面在这份假数据下画得出来、点得动。登录、权限、接口和真库都不算验过。改了数据路径，仍用这个仓库的 dev 脚本或线上再验。
-
-## 数据库
-
-`server/database/schema.ts` 由 `npm run gen:db-schema` 生成。手改会在下次生成时消失，也写不出条件索引和表达式索引。真实 DDL 放生成器碰不到的 SQL 文件里。
-
-每张业务表、每一个字段都要有中文注释，含 `_created_at`、`_created_by`、`_updated_at`、`_updated_by`。这四个系统字段可以一次批量补，不必逐表重写。用 PostgreSQL 的 `COMMENT ON TABLE` 和 `COMMENT ON COLUMN`，和本次 DDL 一起执行。不要用 MySQL 那种写在列定义里的 `COMMENT`。注释写业务含义，不要只重复英文表名或字段名。
-
-```sql
-COMMENT ON TABLE example_order IS '订单，一门店一个营业日一行';
-COMMENT ON COLUMN example_order.store_name IS '门店名称';
-COMMENT ON COLUMN example_order.payload IS '@type { sku: string; qty: number }[] 下单明细';
-```
-
-JSONB 字段保留平台要求的 `@type { ... }`，中文说明写在同一条 `COMMENT` 里，不能用中文换掉 `@type`。
-
-SQL 编辑器一次只跑一张表的注释。整文件一次贴进去会超时，注释里的斜杠还可能被当成语句分隔。不要给系统表 `pg_audit` 写注释。
-
-执行顺序：`lark-cli apps +db-execute`，然后 `gen:db-schema`，重新读过 `schema.ts` 再写业务代码。
-
-先看这个应用有没有拆出 dev：
-
-- 拆了 dev：DDL 打在 dev，不要打 online。发布会把库结构一起带上。
-- 只有一套库：DDL 打在这套库上。`--environment` 可以传 `online`，也可以不传；不传时单库落到 online，多环境落到 dev。不要传 `dev`，也不要执行 `+db-env-create`，那一步不可逆。`+env-pull` 若报 `Invalid DB Branch: dev`，就是没拆环境，不要因此去建 dev。
-
-公共连接禁止 `WITH` 和多语句，DDL 自动提交，不能用 `BEGIN … ROLLBACK` 试探，也不能用 `pg_advisory_lock`。应用进程里已经跑通的 drizzle SQL 不受这条限制。人员字段只比较 `(字段).user_id`，没有 `.name`。不要把 JS 的 `Date` 绑进 SQL。UUID 数组写成 `ARRAY[$1::uuid, ...]::uuid[]`。`SELECT` 也要 `--yes`，见「本机 lark-cli」。结果大约到 1000 行会截断，按人汇总用 `GROUP BY`。
-
-平台的 postgres.js 会把 void 结果当 JSON 解析。`INSERT`、`UPDATE`、`DELETE` 不带 `RETURNING`，或查出 `pg_advisory_xact_lock` 这种 void 列，会抛 `Unexpected end of JSON input`，再变成 500。写语句带 `RETURNING`。要的值用 `json_build_object` 包出来。
-
-SQL 要在真库跑一次，并确认结果不是全 0。全 0 和「条件恒不成立」长得一样。对 SQL 文本做 `toContain` 只锁住字符串，锁不住它能执行。drizzle 拼出来的是表名不是别名，外层再起别名会报 `42P01`。
-
-本地查询脚本有 DML、没有 DDL。`--file` 的路径规则见「本机 lark-cli」。
-
-`schema.ts` 表达不了表达式索引和条件索引，生成时还会丢掉 `WHERE`，读起来像全表唯一，库里却是部分唯一。这两类索引用 SQL 文件维护。索引对账放 `tools/db-index-audit.js`，不要放进平台托管的 `scripts/`。
-
-还有这些库结构事实：
-
-- `EXTRACT` 跟随会话时区。写进 CHECK 要锚定 UTC。
-- 条件唯一索引会在「先插新行再删旧行」的中间态撞上。
-- `ON CONFLICT (id)` 挡不住业务唯一索引。
-- `CREATE TABLE IF NOT EXISTS` 改不了已经存在的列默认值。
-- `estimated_row_count` 是旧统计，不能用来判断表空不空。
-- 清空数据前先查 `NO ACTION` 外键。
-- 按一个所有行都相同的列排序，等于没有排序。
-- 并存的两条唯一索引口径不同时，新写入会 500。先列出这张表的全部唯一索引。drizzle 把驱动错误包在 `cause` 上。
-- 两个环境的 DDL 直接 `diff` 噪声很大，先把空白和标识符归一化。
-- 服务端 `Promise.all` 不会让 drizzle 查询重叠。耗时约等于次数乘以往返。要快就减少查询次数。
-- 应用角色没有 `BYPASSRLS`。表只开 RLS、策略默认拒绝时，正常读写也会失败。RLS 管不住 `TRUNCATE`。
-
-## 系统自带的 pg_audit
-
-`pg_audit` 是平台自带的变更日志，不是业务表。不要 `CREATE`、不要 `INSERT`、不要 `COMMENT ON`。Nest 运行时也不要建它。
-
-业务表要在数据表的「记录日志」里打开「记录变更日志追溯」，平台才会往 `pg_audit` 写。开关只负责写入。
-
-SQL 编辑器里 `SELECT * FROM pg_audit` 能看到行，应用直查经常是空的，这是行级权限，不是没数据。应用里要看操作日志时，在该应用的 SQL 编辑器手工建 `query_audit_logs`，函数用 `SECURITY DEFINER`，建在本应用自己的 schema 里。不要写成 `public.query_audit_logs`，`public` 会被拒。不要抄另一个应用的 schema 名。应用只调用这个函数，不直接读 `pg_audit`。
-
-这个项目不做操作日志时，不要建函数，也不要在页面上留入口。把「不做」写进 `AGENTS.md`。
-
-操作日志页的枚举要自己维护。`query_audit_logs` 返回英文表名和字段名，新增表或字段时一起补映射；查不到时回退原始值，不要留空白。`status` 这类值必须按表区分：订单的 `pending` 是待发货，报修明细的是待派单。用一份表清单的源码断言守住，漏一张表就挂测试。
-
-平台 RBAC 授予容易、撤销难，不要把它当唯一安全边界。每个写接口自己校验。
-
-## 身份
-
-妙搭 userId 和飞书 user_id 是两套号，混用不会报错。转换走 `AuthNPaasService`。通讯录批量接口没有部门路径，要沿上级部门找，并设深度上限。
-
-飞书里每人一个浏览器。多人要一起看到的数据写进库。`localStorage` 和 IndexedDB 只留在这台浏览器上。
-
-平台角色留给少数管理身份。店长、伙伴、岗位这一类人写在业务表里，由接口校验。只藏按钮不够，每个写接口都要验。可见范围先保持仅创建者，等人给出名单再放开。
-
-谁能打开应用用 `+access-scope`。谁能改这个应用的代码用 `+member`。应用里的业务角色用 `+role`。这三组和业务表里的人不是一回事，不要互相代替。
-
-## 发版
-
-```text
-改代码 → 在 sprint/default 提交 → git push → 发版
-```
-
-```bash
-lark-cli apps +release-create --as user --app-id <app_id> --branch sprint/default
-lark-cli apps +release-get --as user --app-id <app_id> --release-id <id>
-```
-
-发版部署的是远端 `sprint/default` 上已经 push 的提交。没 push 就发，部署的是旧提交，界面仍可能显示成功。创建后先是 `publishing`，前几次查到的 `commit_id` 还是上一版。`status=finished` 且下面的命令退出码为 0，这版才上去：
-
-```bash
-git merge-base --is-ancestor <这次提交> <commit_id>
-```
-
-`+release-get` 还没到 `finished` 或 `failed`，节点是 `PENDING` 时，停下来告诉用户在等审批。当前用户不一定是审批人。不要一直查。
-
-已有发布在进行时再创建，会返回 `400002553`。`--jq` 是参数，不能把查询表达式放在命令末尾。接口 403 不能用来判断这版代码在不在，CSRF 在进路由之前就会拒绝。
-
-推送被拒就 `git pull --rebase origin sprint/default`，然后重跑检查。不要 `--force`。用户没有明确要求时，不要自行提交、推送或发版。
-
-### 平台自动升级
-
-平台会自己在 `sprint/default` 上提交 `chore(upgrade): auto-upgrade by fullstack-cli`，同步模板文件、清理 `package.json`、升级 `@lark-apaas` 依赖，不通知。
-
-推送前先 `git fetch`，看 `git log HEAD..origin/sprint/default`。有升级提交就 rebase。升级改过 `package.json` 时，本地 `node_modules` 可能还是旧版本：`package.json` 写 `^1.0.41`，装着的是 `1.0.40`。这时本地 build 和测试全绿，CI 按 lock 装新版本，差异要到线上才暴露。
-
-rebase 后先 `npm ls <包名>` 对一下；不一致就 `npm ci`。`npm install` 有时在 `node_modules/@esbuild/<平台>` 上报 `ENOTEMPTY`，删掉这个目录再装。不要为此改 lock，也不要把升级的版本手改回去。确实不兼容时，显式钉版本并写原因。
-
-这个应用有正在跑的定时任务时，发版前停用，`finished` 后再打开。停用返回里经常没有状态，用 list 确认。
-
-`npm run build` 会先跑交互式插件初始化，非交互终端里失败不代表代码没编过。分别用 `npm run build:server` 和 `npm run build:client`。`npm run lint` 看退出码，不要用 `tail` 判断。输出里是 `write EPIPE` 时，退出码不能当成代码违规，改跑 `npx eslint <文件>` 分清是管道断了还是代码有问题。没有 `npm run ts:server` 时，用 `type:check:server` 和 `type:check:client`。检查命令不要加 `--silent`，它会把「脚本不存在」吞掉，退出码仍是 0。管道里的 `$?` 是最后一条命令的状态，要用 `set -o pipefail`。
-
-`package-lock.json` 冲突不要手合，删掉后 `npm install --package-lock-only` 再 `npm ci --dry-run`。rebase 时 `--ours` 和 merge 时的 `--ours` 是反的。fullstack-cli 会把 SQL 文件从 `100644` 改成 `100755`，这种改动先看是不是只有文件模式变了。
-
-发布会把库结构一起带上。发布后再跑 `+db-env-migrate` 得到没有待迁差异，是正常的，不要为此再发一次结构。
-
-## 定时任务
-
-最短间隔 30 分钟。`*/5` 和 `0,15,30,45` 会被拒绝。半小时写成 `0,30 * * * *`。触发器名字里带 `*/` 时，启用接口会 404。名字必须和代码里的键整串一致。
-
-创建 cron 必须带 `--trigger-type cron`。只给 `--cron` 会报 `required flag(s) "trigger-type" not set`。没有 `--type` 这个参数。新建默认是停用的，要再启用。
-
-```bash
-lark-cli apps +automation-create --as user --app-id <app_id> \
-  --name '<完整名字>' --trigger-type cron --cron '0,30 * * * *' \
-  --description '<不超过 50 字>'
-lark-cli apps +automation-enable --as user --app-id <app_id> --name '<完整名字>'
-lark-cli apps +automation-list --as user --app-id <app_id>
-lark-cli apps +automation-disable --as user --app-id <app_id> --name '<完整名字>'
-```
-
-`can_delete` 为 false 的旧任务删不掉，保持停用。块注释、网段、路径和正则里都不能出现 `*` 紧挨 `/`，报错会飘到几十行外。`+automation-update` 的 `--yes` 见「本机 lark-cli」。说明最长 50 个字符。界面上不要承诺精确到分钟。
-
-抢占必须写在发消息、发通知和一切副作用之前，条件里带上当前状态，并用受影响行数判断。0 行就返回。排在发送之后的占位只防状态改两次，防不了发两次。没抢到不要记成发送失败。
-
-按表里已有的行去筛人的定时任务，先问这张表的行是谁、在什么时候写进去的。写入方如果在这条链路的下游，任务会永远不启动，日志仍像正常。
-
-排查先 `+automation-list` 看在不在、启没启用，再用线上日志看有没有跑过。库里没有产出，不能推断成平台没配触发器。
-
-## 日志
-
-观测命令只有线上。搜索用 `+log-list`，单条用 `+log-get --log-id`。`timestamp_ns` 是纳秒，除以 `1e9` 是秒。
-
-日志只包括进入请求或触发器之后的代码。中间件和启动阶段的日志不会出现，而且不报错。业务 4xx 会被平台拦截器记成 ERROR。客户端断网（状态码 0）和平台自己的 `sdk_innerapi` 也会进错误日志。接口错误计数是 0，只说明没有 5xx。
-
-线上自查日志最早挂到拦截器。中间件和 `onApplicationBootstrap` 里的日志不会出现。先不带关键字拉一段，看有没有流量、`module` 分布和最新一条的时间，再按关键字搜。观测命令不要传 dev 环境。
-
-几个探针不要共用一份条数额度。共用「记完了」标志时，必须是全部信号都记完，不能是其中任意一个。
-
-## 飞书
-
-应用收不到未登录的入站请求。飞书事件用长连接，不用 webhook。卡片图片认 `image_key`，空的 `img_key` 会让整张卡失败。通知收件人传妙搭 userId。无效 id 保持终态，不要放进重试。写进库不等于收件人在自己的列表里看得见，读路径的过滤要单独验。
-
-卡片图片不接受任意 URL。下载字节，用 `im.image.create` 换成 `image_key` 再放进卡片，需要应用身份权限 `im:resource:upload`。没开通时是 `99991672`，SDK 抛的是 axios 400，不是飞书 `code != 0`。这是租户权限，不用用户重新授权。没有 key 就不要放这个图片元素，空的 `img_key` 会让整张卡变成空消息，日志仍可能是成功。
-
-未登录打 `/api` 会 302 到登录，打 `/openapi` 是 403。登录那一跳会保留原查询串。链接预览要在开发者后台打开能力、登记 URL 规则、用长连接订阅，回调要在 3 秒内返回。只正式版应用支持，域名不能用通配符。每个应用最多 50 条长连接，销毁时要 `close()`。
-
-飞书授权是整页跳转，跳之前把用户正要做的事放进 `sessionStorage`，回来再做。以用户身份发消息，卡在重定向 URL 白名单，和 scope 不是一回事。部门列表的顺序是乱的，按 `order` 排。开放平台文档页是前端渲染的，要抓就抓 `.md`。
-
-字段是 null 时，先把接口实际返回的 key 打出来，再判断是权限没开还是字段名不对。`department_ids` 开权限后会有，`department_path` 补权限也不会有。
-
-多维表格要持续进应用时：streaming 任务写入 `*_sync` 原始表，触发器再投影到正式表。关联主数据对不上就跳过这条。源表删除不要删掉已经产生的业务单。应用里已经进行中或已完成的状态，不要被源表的待办盖回去。项目不需要同步时，不要加这条链路。
-
-## 文件和页面
-
-页面上的固定图放这个应用自己的文件存储，用 `lark-cli apps +file-upload` 的地址。别的应用的链接不能拿来用。用户上传的附件只存 `bucketId` 和 `filePath`，打开时按当前登录态 `createSignedUrl`。不要把 `download_url`、`blob:` 或 base64 写进业务表。签名链接谁拿到谁就能打开，权限要在发链接之前验。页面挂在 `/app/<app_id>` 下，相对路径会请求错位置。`window.location.pathname` 含这个前缀，`useLocation().pathname` 不含。不受前缀影响时用 HashRouter。
-
-做界面时少写辅助标签和说明。字段名、按钮、空状态已经说清的，不要再配一句「这里是什么」或操作说明。靠位置、层级和留白把结构说清楚。Avoid unnecessary secondary labels and descriptions. Let the layout do the explaining.
-
-输入框用 `text-base md:text-sm`。低于 16px 时，iOS 聚焦会放大整页。高度用 `dvh`。可点区域大约不小于 40×40。
-
-固定底栏在软键盘弹起时会浮在键盘上方，盖住正在编辑的输入框。用 `visualViewport` 的高度变化判断键盘，弹起时收起底栏；不要用 `:has(:focus)`，WebView 里支持不一致。底栏补 `env(safe-area-inset-bottom)`。
-
-宽屏改完要在窄屏再走一遍：放得下、主操作还在第一屏。桌面后台可以不逐页改成手机布局，但不能把页面撑出横向滚动。视觉以这个项目的 `tailwind-theme.css` 为准。任意值类名，以及用字符串拼出来的类名，改完后在构建出的 CSS 里确认这个类生成了。扫描不到的类不会报错。
-
-`ui/Image` 会给本地图铺一层灰底，透明 SVG 会出现一块矩形。透明图内联成组件。模板若关掉了 `strictNullChecks`，`T | undefined` 的错误 tsc 不会报。`process.env` 只在客户端入口替换，单测在 Node 里是绿的，浏览器里没有 `process`。
-
-## 外部系统
-
-生产环境不能靠临时加自定义环境变量来配地址。地址和凭证放在服务端，页面不直连。飞书服务器访问不到内网和本机。对方必须是公网地址。
 
 ## 做完
 
